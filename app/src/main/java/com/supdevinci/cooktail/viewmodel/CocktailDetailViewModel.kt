@@ -44,8 +44,10 @@ class CocktailDetailViewModel : ViewModel() {
                 val measureField = cocktailClass.getDeclaredField("strMeasure$i")
                 measureField.isAccessible = true
                 val rawMeasure = measureField.get(cocktail) as? String
-                val convertedMeasure = convertOzToCl(rawMeasure)
-                list.add(ingredient to convertedMeasure)
+                
+                // On convertit d'abord les oz en cl, puis on traduit le reste
+                val processedMeasure = translateMeasure(convertOzToCl(rawMeasure))
+                list.add(ingredient to processedMeasure)
             }
         }
         return list
@@ -54,7 +56,7 @@ class CocktailDetailViewModel : ViewModel() {
     private fun convertOzToCl(measure: String?): String? {
         if (measure == null) return null
 
-        // Regex amélioré pour capturer les nombres (entiers, décimaux ou fractions) suivis de "oz"
+        // Regex pour capturer les nombres (entiers, décimaux ou fractions) suivis de "oz"
         val ozRegex = """([\d.]+(?:/[\d.]+)?)\s*(oz|oz\.)""".toRegex(RegexOption.IGNORE_CASE)
         val matchResult = ozRegex.find(measure)
 
@@ -62,8 +64,8 @@ class CocktailDetailViewModel : ViewModel() {
             val valueStr = matchResult.groupValues[1]
             val ozValue = parseValue(valueStr)
             if (ozValue != null && ozValue > 0) {
-                val mlValue = ozValue * 29.5735 // 1 oz = 29.5735 ml
-                val formattedValue = String.format(Locale.US, "%.1f ml", mlValue)
+                val clValue = ozValue * 2.95735 // 1 oz = 2.95735 cl
+                val formattedValue = String.format(Locale.US, "%.1f cl", clValue)
                 measure.replace(matchResult.value, formattedValue)
             } else {
                 measure
@@ -71,6 +73,36 @@ class CocktailDetailViewModel : ViewModel() {
         } else {
             measure
         }
+    }
+
+    private fun translateMeasure(measure: String?): String? {
+        if (measure == null) return null
+        return measure
+            .replace(" dashes", " traits", ignoreCase = true)
+            .replace(" dash", " trait", ignoreCase = true)
+            .replace(" drops", " gouttes", ignoreCase = true)
+            .replace(" drop", " goutte", ignoreCase = true)
+            .replace(" teaspoons", " cuilleres a cafe", ignoreCase = true)
+            .replace(" teaspoon", " cuillere a cafe", ignoreCase = true)
+            .replace(" tsp", " cuillere a cafe", ignoreCase = true)
+            .replace(" tablespoons", " cuilleres a soupe", ignoreCase = true)
+            .replace(" tablespoon", " cuillere a soupe", ignoreCase = true)
+            .replace(" tblsp", " cuillere a soupe", ignoreCase = true)
+            .replace(" tbsp", " cuillere a soupe", ignoreCase = true)
+            .replace(" cups", " tasses", ignoreCase = true)
+            .replace(" cup", " tasse", ignoreCase = true)
+            .replace(" splash", " trait", ignoreCase = true)
+            .replace(" oz", " cl", ignoreCase = true)
+            .replace(" ml", " ml", ignoreCase = true)
+            .replace(" pint hard", " Pinte dur", ignoreCase = true)
+            .replace(" pint sweet or dry", " Pinte doux ou sec", ignoreCase = true)
+            .replace(" pint", " Pinte", ignoreCase = true)
+            .replace(" bottle", " Bouteille", ignoreCase = true)
+            .replace(" Juice of", " Jus de", ignoreCase = true)
+            .replace(" Chilled", " Glacé", ignoreCase = true)
+            .replace(" a little bit of", " un peu de", ignoreCase = true)
+            .replace(" handful", " poignée", ignoreCase = true)
+            .trim()
     }
 
     private fun parseValue(valueStr: String): Double? {

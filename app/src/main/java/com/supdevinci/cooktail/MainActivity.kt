@@ -64,10 +64,13 @@ fun MainNavigation() {
     Scaffold(
         bottomBar = {
             val currentRoute = currentDestination?.route
-            if (currentRoute != null && !currentRoute.startsWith("detail")) {
+            // Cache la navbar sur le splashscreen ET sur les détails
+            val hideNavbar = currentRoute == Routes.SPLASH || (currentRoute != null && currentRoute.startsWith("detail"))
+            
+            if (!hideNavbar) {
                 NavigationBar {
                     NavigationBarItem(
-                        selected = currentDestination.hierarchy.any { it.route == Routes.INGREDIENTS || it.route?.startsWith("search_results") == true },
+                        selected = currentDestination?.hierarchy?.any { it.route == Routes.INGREDIENTS || it.route?.startsWith("search_results") == true } == true,
                         onClick = {
                             navController.navigate(Routes.INGREDIENTS) {
                                 popUpTo(navController.graph.findStartDestination().id) {
@@ -81,7 +84,7 @@ fun MainNavigation() {
                         label = { Text("Chercher") }
                     )
                     NavigationBarItem(
-                        selected = currentDestination.hierarchy.any { it.route == Routes.FAVORITES },
+                        selected = currentDestination?.hierarchy?.any { it.route == Routes.FAVORITES } == true,
                         onClick = {
                             navController.navigate(Routes.FAVORITES) {
                                 popUpTo(navController.graph.findStartDestination().id) {
@@ -192,7 +195,6 @@ fun IngredientsPage(onShowCocktails: (List<String>) -> Unit) {
                     Text("Réessayer")
                 }
             }
-
             else -> {}
         }
     }

@@ -6,46 +6,56 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.supdevinci.cooktail.R
 
-// Polices personnalisées (optionnel - utilisez vos polices préférées)
-// Vous pouvez utiliser Playfair Display pour le titre (luxueux) et Inter/Roboto pour le corps
+// Police personnalisée chargée depuis le dossier res/font
+val CocktailFontFamily = FontFamily(
+    Font(R.font.typococktail, FontWeight.Normal),
+    Font(R.font.typococktail, FontWeight.Bold)
+)
 
 val CookTailTypography = Typography(
-    // Grands titres - Élégant et distinctif
+    // Grands titres - Utilisation de la police typococktail
     displayLarge = TextStyle(
-        fontSize = 32.sp,
+        fontFamily = CocktailFontFamily,
+        fontSize = 34.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = 1.sp
     ),
     displayMedium = TextStyle(
-        fontSize = 28.sp,
+        fontFamily = CocktailFontFamily,
+        fontSize = 30.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = 0.8.sp
     ),
     displaySmall = TextStyle(
-        fontSize = 24.sp,
+        fontFamily = CocktailFontFamily,
+        fontSize = 26.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = 0.5.sp
     ),
 
-    // Titres
+    // Titres de sections
     headlineLarge = TextStyle(
-        fontSize = 20.sp,
+        fontFamily = CocktailFontFamily,
+        fontSize = 22.sp,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 0.5.sp
     ),
     headlineMedium = TextStyle(
-        fontSize = 18.sp,
+        fontFamily = CocktailFontFamily,
+        fontSize = 20.sp,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 0.4.sp
     ),
     headlineSmall = TextStyle(
-        fontSize = 16.sp,
+        fontFamily = CocktailFontFamily,
+        fontSize = 18.sp,
         fontWeight = FontWeight.SemiBold,
         letterSpacing = 0.3.sp
     ),
 
-    // Corps de texte
+    // Corps de texte (On garde une police système pour la lisibilité)
     bodyLarge = TextStyle(
         fontSize = 16.sp,
         fontWeight = FontWeight.Normal,

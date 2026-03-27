@@ -17,47 +17,63 @@ import kotlinx.coroutines.launch
 import java.util.Date
 
 class CocktailByIngredientViewModel(application: Application) : AndroidViewModel(application) {
-    private val cocktailDao = CocktailDatabase.getInstance(application).cocktailDao()
+    private val cocktailDatabase = CocktailDatabase.getInstance(application)
+    private val favoriteCocktailDao = cocktailDatabase.cocktailDao()
 
     private val _etat = MutableStateFlow<CocktailByIngredientState>(CocktailByIngredientState.Idle)
     val etat: StateFlow<CocktailByIngredientState> = _etat
 
-    val favoriteIds: StateFlow<Set<Int>> = cocktailDao.getFavoriteCocktails()
+    val favoriteIds: StateFlow<Set<Int>> = favoriteCocktailDao.getFavoriteCocktails()
         .map { list -> list.map { it.id }.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
-    fun fetchCocktailsByIngredients(ingredients: List<String>) {
-        if (ingredients.isEmpty()) return
+    fun fetchCocktailsByIngredients(selectedIngredients: List<String>) {
+        if (selectedIngredients.isEmpty()) {
+            _etat.value = CocktailByIngredientState.Idle
+            return
+        }
 
         viewModelScope.launch {
             _etat.value = CocktailByIngredientState.Loading
             try {
-                val cocktails = mutableListOf<Cocktail>()
+                var commonCocktails: List<Cocktail>? = null
 
-                for (ingredient in ingredients) {
+                // On boucle sur chaque ingrédient sélectionné
+                for (ingredient in selectedIngredients) {
                     try {
                         val response = RetrofitInstance.api.getCocktailsByIngredient(ingredient)
-                        if (response.drinks != null) {
-                            cocktails.addAll(response.drinks)
+                        val drinks = response.drinks ?: emptyList()
+
+                        if (commonCocktails == null) {
+                            // Premier ingrédient : on prend toute sa liste
+                            commonCocktails = drinks
+                        } else {
+                            // Ingrédients suivants : on fait l'INTERSECTION
+                            // On ne garde que les cocktails déjà présents dans commonCocktails
+                            commonCocktails = commonCocktails.filter { existing ->
+                                drinks.any { new -> new.idDrink == existing.idDrink }
+                            }
                         }
+
+                        // Si à un moment l'intersection est vide, inutile de continuer
+                        if (commonCocktails?.isEmpty() == true) break
+                        
                     } catch (e: Exception) {
-                        Log.e("COCKTAIL_BY_INGREDIENT", "Erreur pour $ingredient: ${e.message}")
+                        Log.e("COCKTAIL_FILTER", "Erreur pour $ingredient: ${e.message}")
                     }
                 }
 
-                if (cocktails.isEmpty()) {
-                    _etat.value = CocktailByIngredientState.Error("Aucun cocktail trouvé")
+                val finalResult = commonCocktails ?: emptyList()
+
+                if (finalResult.isEmpty()) {
+                    _etat.value = CocktailByIngredientState.Error("Aucun cocktail ne contient tous ces ingrédients simultanément.")
                 } else {
-                    // On garde uniquement des cocktails uniques par ID
-                    val uniqueCocktails = cocktails.distinctBy { it.idDrink }
-                    _etat.value = CocktailByIngredientState.Success(uniqueCocktails)
+                    _etat.value = CocktailByIngredientState.Success(finalResult)
                 }
 
             } catch (e: Exception) {
-                Log.e("COCKTAIL_BY_INGREDIENT_ERROR", e.message ?: "Erreur inconnue")
-                _etat.value = CocktailByIngredientState.Error(
-                    message = e.message ?: "Erreur inconnue"
-                )
+                Log.e("COCKTAIL_FILTER_ERROR", e.message ?: "Erreur inconnue")
+                _etat.value = CocktailByIngredientState.Error("Erreur lors de la recherche")
             }
         }
     }
@@ -65,16 +81,11 @@ class CocktailByIngredientViewModel(application: Application) : AndroidViewModel
     fun toggleFavorite(cocktail: Cocktail) {
         viewModelScope.launch {
             val id = cocktail.idDrink.toIntOrNull() ?: return@launch
-            val existing = cocktailDao.getCocktailById(id)
+            val existing = favoriteCocktailDao.getCocktailById(id)
 
             if (existing != null) {
-                if (existing.isFavorite) {
-                    cocktailDao.update(existing.copy(isFavorite = false, updatedAt = Date()))
-                } else {
-                    cocktailDao.update(existing.copy(isFavorite = true, updatedAt = Date()))
-                }
+                favoriteCocktailDao.update(existing.copy(isFavorite = !existing.isFavorite, updatedAt = Date()))
             } else {
-                // Créer une nouvelle entrée
                 val entity = CocktailEntity(
                     id = id,
                     name = cocktail.strDrink ?: "Unknown",
@@ -84,7 +95,7 @@ class CocktailByIngredientViewModel(application: Application) : AndroidViewModel
                     updatedAt = null,
                     deletedAt = null
                 )
-                cocktailDao.insert(entity)
+                favoriteCocktailDao.insert(entity)
             }
         }
     }
